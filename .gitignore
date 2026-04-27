@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+*.so
+.venv/
+venv/
+env/
+
+# Environment
+.env
+
+# Data (large files)
+data/raw/
+data/interim/*.db
+data/processed/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Docker volumes
+postgres_data/
+mongo_data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Report output
+report/TeamP.pdf
+report/figures/
+
+# Notebooks checkpoints
+.ipynb_checkpoints/
