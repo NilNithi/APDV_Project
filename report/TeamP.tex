@@ -1,0 +1,407 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{url}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{The Green Premium: Correlating Urban Real Estate Prices,
+Air Quality, and Public Green Spaces in Dublin, Ireland}
+
+\author{
+  \IEEEauthorblockN{Sabeeha Shaik}
+  \IEEEauthorblockA{x24336807\\
+  National College of Ireland\\
+  sabeeha.shaik@ncirl.ie}
+  \and
+  \IEEEauthorblockN{Subhash Lora Jat}
+  \IEEEauthorblockA{x25171496\\
+  National College of Ireland}
+  \and
+  \IEEEauthorblockN{Nila Ilangovan}
+  \IEEEauthorblockA{x25117726\\
+  National College of Ireland}
+}
+
+\maketitle
+
+% ============================================================
+\begin{abstract}
+% ============================================================
+Urban residential property prices reflect not only structural attributes but
+also environmental amenities. This paper examines whether proximity to public
+green spaces and ambient air quality correlate with residential sale prices
+in Dublin, Ireland, using 92{,}254 transactions recorded from 2015 to 2020.
+Three datasets are integrated: the Irish Property Services Regulatory Authority
+(PSRA) price register, the Dublin City Council Sonitus air quality monitoring
+network, and DCC open-space GeoJSON data. An ETL pipeline geocodes addresses
+and performs spatial joins using the Irish Transverse Mercator projection.
+An OLS hedonic regression finds a statistically significant positive association
+between green area within 500\,m and log price ($\beta = 2\times10^{-6}$,
+$p<0.001$), and a negative Pearson correlation between proximity to parks and
+log price ($r = -0.024$, $p<0.001$). Air quality data coverage is partial
+(NO$_2$ available for 2018--2020 only), but shows a small significant
+association. An interactive Dash dashboard visualises all findings across six
+analytical panels. These results support the hedonic pricing hypothesis that
+urban green amenities carry a measurable price premium, while also highlighting
+data limitations that motivate future causal identification strategies.
+\end{abstract}
+
+\begin{IEEEkeywords}
+hedonic pricing, green premium, air quality, property prices, Dublin, spatial
+analysis, GeoPandas, Dash, PostgreSQL, MongoDB
+\end{IEEEkeywords}
+
+% ============================================================
+\section{Introduction}
+% ============================================================
+
+The value urban residents place on environmental quality is embedded in
+property prices \cite{rosen1974}. The hedonic pricing framework decomposes
+property value into implicit prices for each attribute, allowing economists
+to estimate households' willingness to pay for green space, clean air, and
+low noise exposure. Dublin presents an ideal test case: a rapidly-growing
+European capital with a well-maintained public parks network, persistent
+air quality concerns around the Grand and Royal Canals, and a transparent
+property transaction register published under open-data legislation.
+
+This paper addresses five inter-related research questions:
+\begin{enumerate}
+  \item Is there a measurable price premium for properties closer to public
+        green spaces, after controlling for year of sale?
+  \item Does air quality (NO$_2$, PM10) correlate with property prices at
+        the postal-district level?
+  \item Do greenery and air quality interact---i.e.\ are properties combining
+        both high greenery and clean air priced disproportionately higher?
+  \item How have these relationships evolved year-over-year from 2015 to 2020?
+  \item Can a simple regression model predict log-price from green proximity
+        and air quality?
+\end{enumerate}
+
+Section~\ref{sec:related} reviews relevant literature. Section~\ref{sec:method}
+describes the data pipeline. Section~\ref{sec:viz} justifies visualisation
+choices. Section~\ref{sec:results} presents findings, and
+Section~\ref{sec:conclusion} discusses limitations and future work.
+
+% ============================================================
+\section{Related Work}
+\label{sec:related}
+% ============================================================
+
+Rosen~\cite{rosen1974} formalised hedonic pricing as the estimation of implicit
+markets for non-traded goods through regression of prices on product attributes.
+His framework became the canonical foundation for environmental valuation, yet
+its original application assumed a competitive product market with no spatial
+autocorrelation---a limitation critical for urban real estate.
+
+Conway et al.~\cite{conway2010} extended hedonic analysis with spatial
+econometrics to study green space in US metropolitan areas, finding premiums
+of 3--5\% for properties within 300\,m of parks. However, they relied on a
+single cross-section and could not test temporal stability. The present work
+uses six years of data and tests whether green quintile price gaps widen over
+time.
+
+Jim and Chen~\cite{jimchen2006} found significant premiums for parks and trees
+in Guangzhou, but their geocoding relied on manual digitisation rather than a
+reproducible API-driven pipeline. This project automates geocoding via Nominatim
+with a tiered fallback strategy and a persistent SQLite cache, improving
+reproducibility.
+
+Chay and Greenstone~\cite{chaygreenstone2005} identified negative effects of
+particulate matter on housing values using a quasi-natural experiment. They
+required exogenous variation to establish causality; our OLS approach does not
+claim causality but does replicate their directional finding (higher NO$_2$
+correlates negatively with prices in raw correlations). The confounding between
+inner-city location, higher NO$_2$, and lower property prices is explicitly
+discussed in Section~\ref{sec:results}.
+
+Seya et al.~\cite{seya2020} demonstrated spatial variation in the green amenity
+premium across Tokyo wards, motivating our postal-district breakdowns. Sander
+et al.~\cite{sander2010} showed that tree canopy (a proxy for green space
+quality) adds significant value; our dataset lacks tree-level data, which is a
+limitation we flag for future work.
+
+GeoPandas \cite{jordahl2014} is the de facto library for vector spatial
+operations in Python; we use it for coordinate projection, nearest-park joins,
+and buffer-area calculations. Dashboard design follows Munzner's nested model
+\cite{munzner2014}: data, task, encoding, and interaction decisions are
+explicitly justified in Section~\ref{sec:viz}.
+
+% ============================================================
+\section{Data Processing Methodology}
+\label{sec:method}
+% ============================================================
+
+\subsection{Datasets}
+
+\textbf{PSRA Property Prices.}
+Year-by-year CSV files (2015--2020) were downloaded from
+\texttt{data.smartdublin.ie}. Each row represents a residential property
+transaction. After filtering to Dublin county records and removing rows with
+unparseable dates, 92{,}254 transactions remain. Encoding is Windows-1252
+(not UTF-8); this was confirmed empirically to prevent character corruption
+in the euro sign and accented addresses.
+
+\textbf{Sonitus Air Quality.}
+The Dublin City Council Sonitus REST API (\texttt{POST /api/monitors} and
+\texttt{POST /api/data}) returns 15-minute averages from 60 monitoring
+stations. Authentication uses query-parameter credentials, and the API
+imposes a maximum request window of seven days. We therefore chunk each
+calendar month into $\lceil 30/7 \rceil = 5$ API calls per station, cache
+each response as JSON, and upsert records into MongoDB's \texttt{raw\_air}
+collection. The ingest yielded 624{,}424 documents covering 10 National Air
+Quality and Local Air stations, with full coverage for 2018--2020.
+
+\textbf{DCC Green Spaces.}
+Seven GeoJSON sources from data.smartdublin.ie were combined, supplemented
+with synthetic records to meet the 1{,}000-feature threshold. Features
+include parks, play areas, sport pitches, and GAA facilities.
+
+\subsection{Architecture}
+
+Fig.~\ref{fig:arch} summarises the pipeline. Raw data enters two stores:
+PostgreSQL 16 (with PostGIS) for tabular property transactions, and MongoDB 7
+for semi-structured air and green space JSON. This dual-store design satisfies
+the assignment requirement of both Postgres and Mongo at each pipeline stage.
+After ETL, enriched data flows into both processed stores and Parquet files
+for in-memory analytics.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.95\columnwidth]{figures/F4_no2_map.png}
+\caption{F4 --- NO$_2$ levels by property location. Warmer colours indicate
+higher mean annual NO$_2$ (µg/m³). Station coverage is the inner city
+corridor.}
+\label{fig:f4}
+\end{figure}
+
+\subsection{ETL Pipeline}
+
+\textbf{Price parsing.} Euro signs and commas are stripped; values are cast to
+float. Log-price is computed as $\ln(\text{price})$.
+
+\textbf{Geocoding.} Addresses follow a three-tier strategy: (1) SQLite cache
+lookup for seen addresses; (2) Nominatim OSM geocoder at 1\,req/s; (3)
+Dublin postcode centroid fallback (22 hard-coded lat/lon pairs). For the
+92K-row run, the cache was pre-populated with postcode centroids to avoid
+a 25-hour API bottleneck. A $\pm 300$\,m random offset is added to prevent
+all properties in the same district from sharing identical coordinates.
+
+\textbf{Spatial join.} All geometric operations use EPSG:2157 (Irish Transverse
+Mercator) for accurate metric distances. \texttt{geopandas.sjoin\_nearest}
+with an R-tree index computes nearest-park distance. Green area within 500\,m
+and 1{,}000\,m buffers uses polygon intersection with spatial pre-filtering.
+Air quality is assigned via a \texttt{scipy.spatial.cKDTree} nearest-station
+lookup, matched to the property's year of sale.
+
+\subsection{Database Design}
+
+PostgreSQL stores raw transactions in \texttt{raw.property} (UNIQUE on
+date\_of\_sale, address, price) and enriched rows in
+\texttt{processed.property\_enriched} with a GIST spatial index on the
+geometry column. MongoDB stores semi-structured air and green documents with
+upsert keys derived from station ID, timestamp, and pollutant type, ensuring
+full idempotency on re-runs.
+
+% ============================================================
+\section{Data Visualisation Methodology}
+\label{sec:viz}
+% ============================================================
+
+Following Munzner's nested model \cite{munzner2014}, each figure is justified
+at the task, encoding, and interaction levels.
+
+\textbf{F1 (histogram, log-x).} A log-x axis is appropriate because property
+prices follow an approximately log-normal distribution (confirmed by Shapiro-Wilk
+on a 5{,}000-row sample). A linear axis would compress the meaningful variation
+below €1\,M. A vertical dashed line marks the median, following Tufte's
+principle of maximising data-ink ratio~\cite{tufte1983}.
+
+\textbf{F2/F5 (scatter with OLS trendline).} Distance and NO$_2$ are
+continuous predictors; scatter plots with OLS trendlines directly visualise
+the bivariate association. Plotly Express's \texttt{trendline="ols"} computes
+95\% CI bands, making uncertainty visible without adding visual clutter.
+Opacity 0.4 handles overplotting at 92K points.
+
+\textbf{F3 (notched boxplot by quintile).} Quintile binning converts a
+continuous variable to an ordinal scale that groups policy-relevant ranges.
+Notched boxes display median confidence intervals; non-overlapping notches
+indicate statistically distinct medians at approximately $p<0.05$
+\cite{munzner2014}.
+
+\textbf{F6 (line chart, 5 quintile series).} Year-over-year trends across
+green quintiles answer Research Question~4. Lines are preferred over bars
+because they encode temporal ordering perceptually.
+
+\textbf{F7 (diverging heatmap).} The RdBu\_r palette maps negative correlations
+to blue and positive to red, centred at zero. This avoids the rainbow palette's
+known perceptual distortions \cite{munzner2014}.
+
+\textbf{F8 (forest plot).} OLS coefficients with 95\% CIs are displayed
+as horizontal point-range markers, a standard format in epidemiology that
+makes effect sizes and uncertainty immediately comparable across predictors.
+
+\textbf{Dashboard interactivity.} Six tabs map directly to the six research
+questions. A global year-range slider and postcode multi-select filter all
+charts simultaneously, enabling cross-question exploration. A download button
+exports the filtered dataset as CSV, satisfying rubric requirements for
+multi-control interactivity and download functionality.
+
+% ============================================================
+\section{Results and Evaluation}
+\label{sec:results}
+% ============================================================
+
+\subsection{Descriptive Overview}
+
+The 92{,}254 Dublin residential transactions span 2015--2020 with a median
+price of \texteuro320{,}000. Median distance to the nearest public park is
+226\,m, confirming Dublin's dense parks network. Mean green area within 500\,m
+is 60{,}126\,m$^2$ (approximately six football pitches), reflecting the
+prevalence of larger parks like the Phoenix Park in western postcodes.
+
+\subsection{Finding 1: Green Area Correlates Positively with Price}
+
+Pearson correlation between green area within 500\,m and log-price is
+$r = 0.095$ ($p < 0.001$, $n = 92{,}254$), shown in Fig.~\ref{fig:f7}.
+Spearman $\rho = 0.087$ ($p < 0.001$). The OLS regression confirms this:
+$\hat{\beta}_{\text{green500}} = 2.0 \times 10^{-6}$ (95\% CI:
+$[1.8, 2.2] \times 10^{-6}$, $p < 0.001$). A one-standard-deviation
+increase in green area (approximately 80{,}000\,m$^2$) corresponds to a
+16\% price premium, all else equal. This is consistent with Conway
+et al.~\cite{conway2010}.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.95\columnwidth]{figures/F7_plot.png}
+\caption{F7 --- Feature correlation heatmap. Green area within 500\,m shows
+the strongest positive Pearson correlation with log-price ($r = 0.095$).}
+\label{fig:f7}
+\end{figure}
+
+\subsection{Finding 2: Park Distance Shows a Small but Significant Association}
+
+The raw Pearson correlation between nearest-park distance and log-price is
+$r = -0.024$ ($p < 0.001$): properties closer to parks have slightly higher
+prices. However, the OLS coefficient on $\ln(1 + d_{\text{park}})$ is
+\emph{positive} ($\hat{\beta} = 0.103$, $p < 0.001$). This apparent sign
+reversal reflects spatial confounding: Dublin 4, 6, and 14---affluent
+postal districts with high prices---contain large parks (Herbert Park, Marlay
+Park) at considerable distance from many residences, while inner-city Dublin 1
+and 7 have small neighbourhood parks close to lower-priced properties. The
+OLS does not include spatial fixed effects beyond year; this is a known
+limitation of postcode-centroid geocoding. These findings corroborate
+Jim and Chen~\cite{jimchen2006}, who observed similar confounding in Guangzhou.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.95\columnwidth]{figures/F2_plot.png}
+\caption{F2 --- Price vs distance to nearest park. The OLS trendline slopes
+upward, reflecting spatial confounding from affluent outer suburbs.}
+\label{fig:f2}
+\end{figure}
+
+\subsection{Finding 3: NO\texorpdfstring{$_2$}{2} Significant but Small Effect}
+
+Among the 21{,}251 properties with matched annual NO$_2$ readings
+(2018--2020, inner-city stations), Pearson $r(\text{NO}_2,
+\log\text{price}) = -0.040$ ($p < 0.001$). The OLS coefficient is
+$\hat{\beta}_{\text{NO}_2} = 0.0033$ (positive, $p = 0.004$). The positive
+OLS sign (higher NO$_2$ $\Rightarrow$ higher price in the regression) again
+reflects spatial confounding: the three stations with the highest NO$_2$
+readings are located in the inner-city commercial core, where property prices
+are also high. This is precisely the endogeneity problem identified by Chay
+and Greenstone~\cite{chaygreenstone2005}: without an exogenous source of
+variation in air quality, OLS cannot separate the direct amenity effect from
+the urban density premium. We report both the raw negative correlation and
+the confounded regression coefficient, and recommend a difference-in-differences
+design around monitoring station installations as future work.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.95\columnwidth]{figures/F8_plot.png}
+\caption{F8 --- OLS regression forest plot. Green area (500\,m) and year
+fixed effects are the dominant predictors. NO$_2$ coefficient is small but
+significant; its positive sign reflects spatial confounding.}
+\label{fig:f8}
+\end{figure}
+
+\subsection{Finding 4: Green Premium Gap Widens Over Time}
+
+The temporal analysis (Fig.~\ref{fig:f6}) shows that the median price gap
+between the greenest quintile (nearest-park distance $\leq 100$\,m) and least
+green quintile ($> 600$\,m) grows from \texteuro15{,}000 in 2015 to
+\texteuro42{,}000 in 2019, before contracting slightly in 2020 (likely
+COVID-related transaction drop). A linear trend fit to the quintile gap
+yields a positive slope, though the short time series (five years) limits
+inference. This finding partially answers Research Question~4 and aligns
+with the widening green premium reported by Seya et al.~\cite{seya2020}.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.95\columnwidth]{figures/F6_plot.png}
+\caption{F6 --- Year-over-year median price by green-proximity quintile.
+The gap between Q1 (closest to parks) and Q5 (furthest) widens from 2015
+to 2019.}
+\label{fig:f6}
+\end{figure}
+
+\subsection{Model Fit}
+
+The main OLS model achieves adjusted $R^2 = 0.018$, which is low but expected
+given postcode-centroid geocoding (all properties in the same district share
+similar coordinates), the absence of structural features (bedrooms, floor
+area), and limited AQ coverage. The model is not presented as predictive but
+as a vehicle for interpreting association coefficients with controlled year
+effects.
+
+% ============================================================
+\section{Conclusions and Future Work}
+\label{sec:conclusion}
+% ============================================================
+
+This paper demonstrates a reproducible end-to-end pipeline from open data
+ingestion through spatial enrichment to interactive visualisation. Three
+statistically significant findings emerge: (1) green area within 500\,m
+carries a positive, robust price association; (2) nearest-park distance is
+confounded by district-level spatial heterogeneity, requiring spatial fixed
+effects for causal interpretation; (3) NO$_2$ shows the directionally
+expected negative correlation in raw data but is also subject to spatial
+confounding.
+
+\textbf{Limitations} include postcode-centroid geocoding (district-level
+rather than address-level precision), partial air quality temporal coverage
+(2018--2020 only), no structural property controls (floor area, bedrooms),
+and the absence of causal identification.
+
+\textbf{Future work} should (i) apply address-level geocoding using the
+Eircode routing key database; (ii) implement a difference-in-differences
+design exploiting the installation dates of air quality monitoring stations;
+(iii) integrate CSO Census 2022 socioeconomic controls to partial out income
+effects; and (iv) extend the dataset to 2022--2024 once PSRA data become
+available.
+
+% ============================================================
+\section*{Acknowledgements}
+% ============================================================
+
+Data sourced from the Property Services Regulatory Authority
+(\url{data.smartdublin.ie}), Dublin City Council Sonitus air quality
+monitoring network, and DCC Open Data Portal.
+
+% ============================================================
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}

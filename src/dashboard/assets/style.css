@@ -1,0 +1,46 @@
+/* Green Premium Dublin — Dashboard Styles */
+
+body {
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background-color: #f8f9fa;
+}
+
+/* Tab styling */
+.nav-tabs .nav-link {
+    color: #495057;
+    font-weight: 500;
+}
+
+.nav-tabs .nav-link.active {
+    color: #2c7a4b;
+    border-bottom: 3px solid #2c7a4b;
+    font-weight: 600;
+}
+
+/* KPI cards */
+.card {
+    border: none;
+    border-radius: 8px;
+}
+
+.card-title {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Header */
+h2.text-success {
+    color: #2c7a4b !important;
+    font-weight: 700;
+}
+
+/* Figures */
+.js-plotly-plot {
+    border-radius: 6px;
+}
+
+/* Global filter bar */
+.bg-light.rounded {
+    background-color: #eef2f7 !important;
+}

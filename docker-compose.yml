@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: green_pass
       POSTGRES_DB: green_premium
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./db/init/postgres:/docker-entrypoint-initdb.d
