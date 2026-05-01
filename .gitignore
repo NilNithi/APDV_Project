@@ -39,9 +39,13 @@ mongo_data/
 .DS_Store
 Thumbs.db
 
-# Report output
-report/TeamP.pdf
-report/figures/
+# Report build artifacts (keep .tex, .bib, .pdf, figures/)
+report/*.aux
+report/*.bbl
+report/*.blg
+report/*.log
+report/*.out
+report/*.synctex*
 
 # Notebooks checkpoints
 .ipynb_checkpoints/
