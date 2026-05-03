@@ -27,8 +27,9 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 TEMPLATE: str = "plotly_white"
 VIRIDIS: str = "Viridis"
-FIGURE_DIR: Path = PROJECT_ROOT / "report" / "figures"
-SCALE: int = 3
+import os as _os
+FIGURE_DIR: Path = Path(_os.environ.get("GREEN_PREMIUM_FIGURE_DIR", PROJECT_ROOT / "report" / "figures"))
+SCALE: int = int(_os.environ.get("GREEN_PREMIUM_FIGURE_SCALE", "3"))
 
 # Dublin city centre approx centroid
 _DUBLIN_LAT: float = 53.349805
@@ -46,7 +47,8 @@ def _load_property_df() -> pd.DataFrame:
     Returns:
         Property DataFrame, potentially empty if no parquet files exist yet.
     """
-    processed = PROJECT_ROOT / "data" / "processed"
+    import os
+    processed = Path(os.environ.get("GREEN_PREMIUM_DATA_DIR", PROJECT_ROOT / "data" / "processed"))
     interim = PROJECT_ROOT / "data" / "interim"
 
     for candidate in [
@@ -383,15 +385,19 @@ def run() -> None:
     F4 is saved as PNG (with HTML fallback if kaleido is absent).
     F9 is saved as a self-contained HTML file.
     """
-    FIGURE_DIR.mkdir(parents=True, exist_ok=True)
+    # Re-read env vars at call time (not import time) so --demo overrides work
+    fig_dir = Path(_os.environ.get("GREEN_PREMIUM_FIGURE_DIR", PROJECT_ROOT / "report" / "figures"))
+    scale = int(_os.environ.get("GREEN_PREMIUM_FIGURE_SCALE", "3"))
+
+    fig_dir.mkdir(parents=True, exist_ok=True)
 
     df = _load_property_df()
 
     # F4 — NO₂ map
     f4 = plot_f4_no2_map(df)
-    f4_png = FIGURE_DIR / "F4_no2_map.png"
+    f4_png = fig_dir / "F4_no2_map.png"
     try:
-        f4.write_image(str(f4_png), scale=SCALE, width=1200, height=700)
+        f4.write_image(str(f4_png), scale=scale, width=1200, height=700)
         logger.info("Saved F4 -> %s", f4_png)
     except Exception as exc:
         logger.warning("Cannot write F4 PNG (%s) -- saving HTML fallback", exc)
@@ -400,17 +406,18 @@ def run() -> None:
         logger.info("Saved F4 fallback -> %s", f4_html)
 
     # F9 — Folium interactive map
-    try:
-        db = get_mongo_db()
-    except Exception as exc:
-        logger.warning("F9: MongoDB unavailable (%s) — map will omit overlays", exc)
-        db = None
+    db = None
+    if not _os.environ.get("GREEN_PREMIUM_DATA_DIR"):  # skip MongoDB in demo
+        try:
+            db = get_mongo_db()
+        except Exception as exc:
+            logger.warning("F9: MongoDB unavailable (%s) — map will omit overlays", exc)
 
     has_geo = not df.empty and {"lat", "lon", "price"}.issubset(df.columns)
     map_df = df if has_geo else _synthetic_geo_df()
 
     f9_map = create_f9_folium_map(map_df, db)
-    f9_path = FIGURE_DIR / "F9_dublin_map.html"
+    f9_path = fig_dir / "F9_dublin_map.html"
     f9_map.save(str(f9_path))
     logger.info("Saved F9 -> %s", f9_path)
 

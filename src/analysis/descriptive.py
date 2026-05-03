@@ -1,6 +1,7 @@
 """Descriptive statistics for the enriched property dataset."""
 
 import logging
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -11,7 +12,7 @@ from src.config import PROJECT_ROOT
 
 logger = logging.getLogger(__name__)
 
-PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
+PROCESSED_DIR = Path(os.environ.get("GREEN_PREMIUM_DATA_DIR", PROJECT_ROOT / "data" / "processed"))
 INTERIM_DIR = PROJECT_ROOT / "data" / "interim"
 
 

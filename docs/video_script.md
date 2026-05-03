@@ -20,7 +20,7 @@ Our five research questions are: [read from slide] Is there a green premium? Doe
 
 ## Segment 2 — Architecture Walkthrough (2:00)
 
-*[Show architecture diagram — docs/architecture.png or the ASCII diagram from CLAUDE.md]*
+*[Show architecture diagram — docs/architecture.png]*
 
 "Let me walk you through the technical pipeline.
 

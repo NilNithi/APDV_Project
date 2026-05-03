@@ -33,8 +33,9 @@ logger = logging.getLogger(__name__)
 TEMPLATE: str = "plotly_white"
 VIRIDIS: str = "Viridis"
 CATEGORICAL: str = "Plotly"  # px.colors.qualitative.Plotly
-FIGURE_DIR: Path = PROJECT_ROOT / "report" / "figures"
-SCALE: int = 3  # ×3 -> ~300 DPI equivalent at 1200×700 px canvas
+import os as _os
+FIGURE_DIR: Path = Path(_os.environ.get("GREEN_PREMIUM_FIGURE_DIR", PROJECT_ROOT / "report" / "figures"))
+SCALE: int = int(_os.environ.get("GREEN_PREMIUM_FIGURE_SCALE", "3"))  # 3x=300DPI, 1x=demo
 
 
 # ---------------------------------------------------------------------------
@@ -53,7 +54,8 @@ def _load_data() -> tuple[pd.DataFrame, dict[str, pd.DataFrame]]:
         - ``df``: enriched property DataFrame (may be empty).
         - ``results``: mapping of analysis-result name -> DataFrame.
     """
-    processed = PROJECT_ROOT / "data" / "processed"
+    import os
+    processed = Path(os.environ.get("GREEN_PREMIUM_DATA_DIR", PROJECT_ROOT / "data" / "processed"))
     interim = PROJECT_ROOT / "data" / "interim"
 
     # Property data — prefer fully enriched, fall back to cleaned
@@ -479,26 +481,51 @@ def run() -> dict[str, go.Figure]:
     Returns:
         Mapping of figure label (e.g. ``"F1"``) to its :class:`go.Figure`.
     """
-    FIGURE_DIR.mkdir(parents=True, exist_ok=True)
+    # Re-read env vars at call time (not import time) so --demo overrides work
+    fig_dir = Path(_os.environ.get("GREEN_PREMIUM_FIGURE_DIR", PROJECT_ROOT / "report" / "figures"))
+    scale = int(_os.environ.get("GREEN_PREMIUM_FIGURE_SCALE", "3"))
+    logger.info("Figure output: %s  scale=%d", fig_dir, scale)
+
+    fig_dir.mkdir(parents=True, exist_ok=True)
     df, results = _load_data()
 
-    figures: dict[str, go.Figure] = {
-        "F1": plot_f1_price_distribution(df),
-        "F2": plot_f2_price_vs_park_dist(df),
-        "F3": plot_f3_price_by_green_quintile(df),
-        "F5": plot_f5_price_vs_no2(df),
-        "F6": plot_f6_temporal_by_quintile(results),
-        "F7": plot_f7_correlation_heatmap(results),
-        "F8": plot_f8_regression_forest(results),
-    }
+    import time as _time
+
+    # Pre-warm kaleido (first Chromium launch is slow — antivirus scan)
+    logger.info("Pre-warming kaleido (first PNG render triggers Chromium cold start)...")
+    t_warm = _time.perf_counter()
+    try:
+        _warmup = go.Figure().write_image(fig_dir / "_warmup.png", scale=1, width=100, height=100)
+        (fig_dir / "_warmup.png").unlink(missing_ok=True)
+    except Exception:
+        pass
+    logger.info("Kaleido ready in %.1fs", _time.perf_counter() - t_warm)
+
+    # Generate figures one-by-one with timing (debug: find which hangs)
+    figure_builders = [
+        ("F1", lambda: plot_f1_price_distribution(df)),
+        ("F2", lambda: plot_f2_price_vs_park_dist(df)),
+        ("F3", lambda: plot_f3_price_by_green_quintile(df)),
+        ("F5", lambda: plot_f5_price_vs_no2(df)),
+        ("F6", lambda: plot_f6_temporal_by_quintile(results)),
+        ("F7", lambda: plot_f7_correlation_heatmap(results)),
+        ("F8", lambda: plot_f8_regression_forest(results)),
+    ]
 
     saved: list[str] = []
-    for label, fig in figures.items():
-        png_path = FIGURE_DIR / f"{label}_plot.png"
+    for label, builder in figure_builders:
+        t0 = _time.perf_counter()
+        logger.info("Generating %s...", label)
+        fig = builder()
+        t_gen = _time.perf_counter() - t0
+        logger.info("Generated %s in %.1fs. Writing PNG...", label, t_gen)
+
+        png_path = fig_dir / f"{label}_plot.png"
         try:
-            fig.write_image(str(png_path), scale=SCALE, width=1200, height=700)
+            t1 = _time.perf_counter()
+            fig.write_image(str(png_path), scale=scale, width=1200, height=700)
             saved.append(str(png_path))
-            logger.info("Saved %s -> %s", label, png_path)
+            logger.info("Saved %s -> %s (gen=%.1fs write=%.1fs)", label, png_path, t_gen, _time.perf_counter() - t1)
         except Exception as exc:  # kaleido absent or other render error
             logger.warning(
                 "Cannot write PNG for %s (%s) — saving HTML fallback", label, exc
@@ -507,8 +534,8 @@ def run() -> dict[str, go.Figure]:
             fig.write_html(str(html_path))
             saved.append(str(html_path))
 
-    logger.info("Saved %d figures to %s", len(saved), FIGURE_DIR)
-    return figures
+    logger.info("Saved %d figures to %s", len(saved), fig_dir)
+    return {label: None for label, _ in figure_builders}
 
 
 if __name__ == "__main__":

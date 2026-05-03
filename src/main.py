@@ -177,8 +177,15 @@ def _run_demo() -> None:
                      "Dashboard will show real data. Demo parquet at %s",
                      prod_parquet, prod_parquet.stat().st_size // 1_000_000, parquet_path)
 
+    # Point analysis/viz modules at demo dir (500 rows, not 92K)
+    import os
+    os.environ["GREEN_PREMIUM_DATA_DIR"] = str(demo_dir)
+    demo_fig_dir = PROJECT_ROOT / "report" / "figures" / "demo"
+    demo_fig_dir.mkdir(parents=True, exist_ok=True)
+    os.environ["GREEN_PREMIUM_FIGURE_DIR"] = str(demo_fig_dir)
+
     # --- Run analysis ---
-    logger.info("[Demo] Running analysis on synthetic data...")
+    logger.info("[Demo] Running analysis on synthetic data (500 rows)...")
     try:
         from src.analysis import descriptive, correlation, regression, temporal
         analysis_tasks = {
@@ -191,8 +198,9 @@ def _run_demo() -> None:
     except Exception:
         logger.warning("[Demo] Analysis step had errors (non-fatal for demo).", exc_info=True)
 
-    # --- Run visualization ---
-    logger.info("[Demo] Generating figures...")
+    # --- Run visualization (low-res for speed) ---
+    logger.info("[Demo] Generating figures (500 rows, low-res for speed)...")
+    os.environ["GREEN_PREMIUM_FIGURE_SCALE"] = "1"  # 1x instead of 3x = 9x fewer pixels
     try:
         from src.viz import static_plots, maps
         viz_tasks = {
@@ -202,6 +210,11 @@ def _run_demo() -> None:
         _run_parallel(viz_tasks, "Viz")
     except Exception:
         logger.warning("[Demo] Viz step had errors (non-fatal for demo).", exc_info=True)
+    os.environ.pop("GREEN_PREMIUM_FIGURE_SCALE", None)
+
+    # Clean up env vars
+    os.environ.pop("GREEN_PREMIUM_DATA_DIR", None)
+    os.environ.pop("GREEN_PREMIUM_FIGURE_DIR", None)
 
     elapsed = time.perf_counter() - t0
     logger.info("=== DEMO PIPELINE COMPLETE in %.1f seconds ===", elapsed)

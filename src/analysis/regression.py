@@ -1,6 +1,7 @@
 """OLS regression: log_price ~ green proximity + air quality + controls."""
 
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -13,7 +14,7 @@ from src.config import PROJECT_ROOT
 
 logger = logging.getLogger(__name__)
 
-PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
+PROCESSED_DIR = Path(os.environ.get("GREEN_PREMIUM_DATA_DIR", PROJECT_ROOT / "data" / "processed"))
 INTERIM_DIR = PROJECT_ROOT / "data" / "interim"
 
 # Percentile thresholds for outlier trimming
