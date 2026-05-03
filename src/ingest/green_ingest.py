@@ -1,4 +1,4 @@
-"""Green space ingest — GeoJSON sources → MongoDB raw_green.
+"""Green space ingest — GeoJSON sources -> MongoDB raw_green.
 
 Downloads GeoJSON from multiple Dublin council open-data portals (DCC, SDCC,
 DLR, FCC) and upserts normalised feature documents into the MongoDB
@@ -252,7 +252,7 @@ def fetch_geojson(url: str, timeout: int = _REQUEST_TIMEOUT) -> list[dict[str, A
     # Persist to disk cache.
     try:
         cache_path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
-        logger.debug("Cached response → %s", cache_path)
+        logger.debug("Cached response -> %s", cache_path)
     except OSError as exc:
         logger.warning("Could not write cache file %s: %s", cache_path, exc)
 

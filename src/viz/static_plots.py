@@ -34,7 +34,7 @@ TEMPLATE: str = "plotly_white"
 VIRIDIS: str = "Viridis"
 CATEGORICAL: str = "Plotly"  # px.colors.qualitative.Plotly
 FIGURE_DIR: Path = PROJECT_ROOT / "report" / "figures"
-SCALE: int = 3  # ×3 → ~300 DPI equivalent at 1200×700 px canvas
+SCALE: int = 3  # ×3 -> ~300 DPI equivalent at 1200×700 px canvas
 
 
 # ---------------------------------------------------------------------------
@@ -51,7 +51,7 @@ def _load_data() -> tuple[pd.DataFrame, dict[str, pd.DataFrame]]:
     Returns:
         A 2-tuple of:
         - ``df``: enriched property DataFrame (may be empty).
-        - ``results``: mapping of analysis-result name → DataFrame.
+        - ``results``: mapping of analysis-result name -> DataFrame.
     """
     processed = PROJECT_ROOT / "data" / "processed"
     interim = PROJECT_ROOT / "data" / "interim"
@@ -498,7 +498,7 @@ def run() -> dict[str, go.Figure]:
         try:
             fig.write_image(str(png_path), scale=SCALE, width=1200, height=700)
             saved.append(str(png_path))
-            logger.info("Saved %s → %s", label, png_path)
+            logger.info("Saved %s -> %s", label, png_path)
         except Exception as exc:  # kaleido absent or other render error
             logger.warning(
                 "Cannot write PNG for %s (%s) — saving HTML fallback", label, exc

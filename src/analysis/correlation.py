@@ -235,7 +235,7 @@ def run() -> dict[str, pd.DataFrame]:
     for key, fname in file_map.items():
         out = PROCESSED_DIR / fname
         results[key].to_parquet(out)
-        logger.info("Saved %s → %s", key, out)
+        logger.info("Saved %s -> %s", key, out)
 
     # Log headline correlations for quick sanity-check
     for col in [c for c in available if c != "log_price"]:

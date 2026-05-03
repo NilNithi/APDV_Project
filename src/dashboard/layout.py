@@ -121,9 +121,10 @@ def _park_scatter(df: pd.DataFrame) -> go.Figure:
     if df.empty or "nearest_park_dist_m" not in df.columns:
         return go.Figure()
 
-    sub = df[["nearest_park_dist_m", "price"]].dropna().sample(
-        min(5000, len(df)), random_state=42
-    )
+    sub = df[["nearest_park_dist_m", "price"]].dropna()
+    if sub.empty:
+        return go.Figure()
+    sub = sub.sample(min(5000, len(sub)), random_state=42)
     fig = px.scatter(
         sub,
         x="nearest_park_dist_m",
@@ -163,8 +164,11 @@ def _green_quintile_box(df: pd.DataFrame) -> go.Figure:
             labels=["Q1 (least)", "Q2", "Q3", "Q4", "Q5 (most)"],
         )
     except ValueError:
-        # Duplicate bin edges when many values are equal — fall back without labels.
-        sub["quintile"] = pd.qcut(sub["green_area_within_500m"], q=5, duplicates="drop")
+        # Duplicate bin edges — use rank-based quantile assignment
+        sub["quintile"] = pd.qcut(
+            sub["green_area_within_500m"].rank(method="first"), q=5,
+            labels=["Q1 (least)", "Q2", "Q3", "Q4", "Q5 (most)"],
+        )
     fig = px.box(
         sub,
         x="quintile",
@@ -196,9 +200,10 @@ def _no2_scatter(df: pd.DataFrame) -> go.Figure:
     if df.empty or "mean_no2_year" not in df.columns:
         return go.Figure()
 
-    sub = df[["mean_no2_year", "price"]].dropna().sample(
-        min(5000, len(df)), random_state=42
-    )
+    sub = df[["mean_no2_year", "price"]].dropna()
+    if sub.empty:
+        return go.Figure()
+    sub = sub.sample(min(5000, len(sub)), random_state=42)
     fig = px.scatter(
         sub,
         x="mean_no2_year",
@@ -238,7 +243,10 @@ def _temporal_lines(df: pd.DataFrame) -> go.Figure:
             labels=["Q1 (closest)", "Q2", "Q3", "Q4", "Q5 (furthest)"],
         )
     except ValueError:
-        sub["quintile"] = pd.qcut(sub["nearest_park_dist_m"], q=5, duplicates="drop")
+        sub["quintile"] = pd.qcut(
+            sub["nearest_park_dist_m"].rank(method="first"), q=5,
+            labels=["Q1 (closest)", "Q2", "Q3", "Q4", "Q5 (furthest)"],
+        )
     grouped = (
         sub.groupby(["year_of_sale", "quintile"], observed=True)["price"]
         .median()
@@ -285,12 +293,13 @@ def _correlation_heatmap(df: pd.DataFrame) -> go.Figure:
         "mean_noise_db_year",
     ]
     available = [c for c in cols if c in df.columns]
-    sub = df[available].dropna()
+    # Pairwise correlation — don't drop rows with any NaN (AQ cols are sparse)
+    sub = df[available]
+    corr = sub.corr(min_periods=10)
 
-    if len(sub) < 10:
+    if corr.empty or corr.isna().all().all():
         return go.Figure()
 
-    corr = sub.corr()
     fig = px.imshow(
         corr,
         text_auto=".2f",

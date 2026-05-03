@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 INTERIM_DIR = PROJECT_ROOT / "data" / "interim"
 
-# Pollutant keyword → enriched column name mapping.
+# Pollutant keyword -> enriched column name mapping.
 # The keyword is matched case-insensitively against the 'pollutant' field in
 # processed_air_annual.
 _POLLUTANT_MAP: dict[str, str] = {
@@ -546,7 +546,7 @@ def _assign_air_quality(
 
     years = pd.to_numeric(df["year_of_sale"], errors="coerce")
 
-    # Build a lookup dict: (monitor_id, year, pollutant_upper) → mean_value
+    # Build a lookup dict: (monitor_id, year, pollutant_upper) -> mean_value
     # to avoid repeated DataFrame filtering in the inner loop.
     mean_col = "mean_value" if "mean_value" in air_df.columns else "value"
     pollutant_col = "pollutant" if "pollutant" in air_df.columns else None

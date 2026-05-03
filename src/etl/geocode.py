@@ -202,7 +202,7 @@ def _postcode_centroid(postal_code: str) -> Optional[tuple[float, float]]:
 
     Handles both "DUBLIN 2" (from address parsing) and "D02 XY45" (Eircode)
     forms.  For Eircodes only the routing-key prefix is used to map to a
-    district (e.g. "D02" → "Dublin 2").
+    district (e.g. "D02" -> "Dublin 2").
 
     Args:
         postal_code: Raw postal code string (may be uppercased).
@@ -215,12 +215,12 @@ def _postcode_centroid(postal_code: str) -> Optional[tuple[float, float]]:
 
     code = postal_code.strip().upper()
 
-    # Normalise "DUBLIN 2" / "DUBLIN 6W" → title-case key used in the dict.
+    # Normalise "DUBLIN 2" / "DUBLIN 6W" -> title-case key used in the dict.
     if code.startswith("DUBLIN"):
-        key = code.title().replace("  ", " ")  # "DUBLIN  2" → "Dublin 2"
+        key = code.title().replace("  ", " ")  # "DUBLIN  2" -> "Dublin 2"
         return DUBLIN_CENTROIDS.get(key)
 
-    # Attempt Eircode routing-key mapping (first 3 chars → Dublin district).
+    # Attempt Eircode routing-key mapping (first 3 chars -> Dublin district).
     # Only a subset of routing keys is covered — expand as needed.
     _eircode_map: dict[str, str] = {
         "D01": "Dublin 1",
@@ -430,7 +430,7 @@ def run(df: Optional[pd.DataFrame] = None) -> pd.DataFrame:
     out = CACHE_DB.parent / "property_geocoded.parquet"
     out.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(out, index=False)
-    logger.info("Geocoded data cached → %s", out)
+    logger.info("Geocoded data cached -> %s", out)
 
     return df
 

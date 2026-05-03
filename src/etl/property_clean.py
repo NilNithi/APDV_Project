@@ -83,7 +83,7 @@ def _extract_postal_code(
 
     # Fill remaining gaps with Dublin area code pattern.
     dublin_match = address_clean.str.extract(_RE_DUBLIN_AREA, expand=False)
-    # Normalise spacing: "DUBLIN  2" → "DUBLIN 2"
+    # Normalise spacing: "DUBLIN  2" -> "DUBLIN 2"
     dublin_match = dublin_match.str.replace(r"\s+", " ", regex=True)
     result = result.fillna(dublin_match)
 
@@ -120,12 +120,12 @@ def clean_property_df(df: pd.DataFrame) -> pd.DataFrame:
     """Apply all cleaning and parsing transformations to the raw property DataFrame.
 
     Transformations applied (in order):
-    - date_of_sale → datetime; year_of_sale extracted as Int64
-    - price → float; log_price derived; zero/null price rows dropped
-    - address_clean → uppercased, whitespace-collapsed string
-    - postal_code → extracted/normalised (Eircode or Dublin area)
-    - not_full_market_price → bool
-    - floor_area → split into floor_area_sqm (float) + floor_area_category (str)
+    - date_of_sale -> datetime; year_of_sale extracted as Int64
+    - price -> float; log_price derived; zero/null price rows dropped
+    - address_clean -> uppercased, whitespace-collapsed string
+    - postal_code -> extracted/normalised (Eircode or Dublin area)
+    - not_full_market_price -> bool
+    - floor_area -> split into floor_area_sqm (float) + floor_area_category (str)
     - Rows with null date_of_sale dropped
 
     Args:
@@ -178,7 +178,7 @@ def clean_property_df(df: pd.DataFrame) -> pd.DataFrame:
     # Raw values are the strings "Yes" / "No" (case-insensitive).
     nfmp = df["not_full_market_price"].astype(str).str.strip().str.title()
     df["not_full_market_price"] = nfmp.map({"Yes": True, "No": False})
-    # Anything that didn't map cleanly stays NaN → nullable bool via object dtype.
+    # Anything that didn't map cleanly stays NaN -> nullable bool via object dtype.
 
     # ------------------------------------------------------------ floor area
     df["floor_area_sqm"], df["floor_area_category"] = _parse_floor_area(
@@ -227,7 +227,7 @@ def run() -> pd.DataFrame:
     out = INTERIM_DIR / "property_clean.parquet"
     out.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(out, index=False)
-    logger.info("Cleaned data cached → %s", out)
+    logger.info("Cleaned data cached -> %s", out)
 
     return df
 

@@ -250,11 +250,11 @@ def run() -> dict[str, Any]:
     # Persist
     main_out = PROCESSED_DIR / "regression_results.parquet"
     coef_df.to_parquet(main_out)
-    logger.info("Saved main coefficients → %s", main_out)
+    logger.info("Saved main coefficients -> %s", main_out)
 
     int_out = PROCESSED_DIR / "regression_interaction_results.parquet"
     int_coef_df.to_parquet(int_out)
-    logger.info("Saved interaction coefficients → %s", int_out)
+    logger.info("Saved interaction coefficients -> %s", int_out)
 
     summary_path = PROCESSED_DIR / "ols_summary.txt"
     summary_path.write_text(
@@ -264,7 +264,7 @@ def run() -> dict[str, Any]:
         + str(interaction_model.summary()),
         encoding="utf-8",
     )
-    logger.info("OLS summary text → %s", summary_path)
+    logger.info("OLS summary text -> %s", summary_path)
 
     return {
         "main_model": main_model,

@@ -212,7 +212,7 @@ def run() -> dict[str, pd.DataFrame]:
         out_path = PROCESSED_DIR / f"descriptive_{name}.parquet"
         if not table.empty:
             table.to_parquet(out_path, index=False)
-            logger.info("Saved %s (%d rows) → %s", name, len(table), out_path)
+            logger.info("Saved %s (%d rows) -> %s", name, len(table), out_path)
         else:
             logger.warning("Table '%s' is empty — skipping parquet write", name)
 

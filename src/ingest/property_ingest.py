@@ -108,7 +108,7 @@ def download_year(year: int) -> Optional[Path]:
             with dest.open("wb") as fh:
                 for chunk in response.iter_content(chunk_size=65536):
                     fh.write(chunk)
-            logger.info("Saved %d bytes → %s", dest.stat().st_size, dest)
+            logger.info("Saved %d bytes -> %s", dest.stat().st_size, dest)
             return dest
         except requests.HTTPError as exc:
             logger.warning(

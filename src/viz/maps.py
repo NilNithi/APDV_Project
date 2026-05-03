@@ -392,12 +392,12 @@ def run() -> None:
     f4_png = FIGURE_DIR / "F4_no2_map.png"
     try:
         f4.write_image(str(f4_png), scale=SCALE, width=1200, height=700)
-        logger.info("Saved F4 → %s", f4_png)
+        logger.info("Saved F4 -> %s", f4_png)
     except Exception as exc:
-        logger.warning("Cannot write F4 PNG (%s) — saving HTML fallback", exc)
+        logger.warning("Cannot write F4 PNG (%s) -- saving HTML fallback", exc)
         f4_html = f4_png.with_suffix(".html")
         f4.write_html(str(f4_html))
-        logger.info("Saved F4 fallback → %s", f4_html)
+        logger.info("Saved F4 fallback -> %s", f4_html)
 
     # F9 — Folium interactive map
     try:
@@ -412,7 +412,7 @@ def run() -> None:
     f9_map = create_f9_folium_map(map_df, db)
     f9_path = FIGURE_DIR / "F9_dublin_map.html"
     f9_map.save(str(f9_path))
-    logger.info("Saved F9 → %s", f9_path)
+    logger.info("Saved F9 -> %s", f9_path)
 
     logger.info("maps.run() complete")
 

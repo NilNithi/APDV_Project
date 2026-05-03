@@ -177,11 +177,11 @@ def run() -> dict[str, Any]:
     # ------------------------------------------------------------------
     pivot_out = PROCESSED_DIR / "temporal_median_price.parquet"
     pivot.reset_index().to_parquet(pivot_out, index=False)
-    logger.info("Saved pivot → %s", pivot_out)
+    logger.info("Saved pivot -> %s", pivot_out)
 
     yoy_out = PROCESSED_DIR / "temporal_yoy_change.parquet"
     yoy_change.reset_index().to_parquet(yoy_out, index=False)
-    logger.info("Saved YoY change → %s", yoy_out)
+    logger.info("Saved YoY change -> %s", yoy_out)
 
     return {
         "pivot": pivot,

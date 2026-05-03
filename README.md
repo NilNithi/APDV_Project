@@ -52,10 +52,13 @@ cp .env.example .env
 ### 4. Run the full pipeline
 
 ```bash
-python -m src.main
+python -m src.main           # Full pipeline (~1-2 hours, needs Docker)
+python -m src.main --demo    # Demo mode (~90 seconds, NO Docker needed)
 ```
 
-This runs: ingest (property CSV + Sonitus API + GeoJSON) -> ETL (clean, geocode, spatial join) -> analysis (descriptive, correlation, OLS regression, temporal) -> visualisation (static plots + maps).
+**Full mode:** ingest (property CSV + Sonitus API + GeoJSON) -> ETL (clean, geocode, spatial join) -> analysis (descriptive, correlation, OLS regression, temporal) -> visualisation (static plots + maps). Independent steps run in parallel (3 ingests, 3 cleans, 6 analysis+viz tasks).
+
+**Demo mode:** generates 500 synthetic Dublin property records with realistic distributions, runs analysis + visualisation. No databases, no API calls, no network required. Safe to run alongside real data (writes to `data/demo/`, never overwrites real parquets > 1MB).
 
 ### 5. Launch the dashboard
 

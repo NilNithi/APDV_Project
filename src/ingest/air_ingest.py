@@ -1,4 +1,4 @@
-"""Air quality ingest — Sonitus API → MongoDB raw_air.
+"""Air quality ingest — Sonitus API -> MongoDB raw_air.
 
 Fetches monitoring station metadata and historical pollutant readings from the
 Dublin City Council Sonitus API, caches raw responses to disk, and upserts
@@ -271,7 +271,7 @@ def fetch_station_month(
 
 
 # ---------------------------------------------------------------------------
-# Parse wide-format rows → long-format documents
+# Parse wide-format rows -> long-format documents
 # ---------------------------------------------------------------------------
 
 
@@ -590,7 +590,7 @@ def run() -> None:
 
     logger.info("Starting Sonitus air-quality ingest  base_url=%s", BASE_URL)
     logger.info(
-        "Date range: %d-%02d → %d-%02d",
+        "Date range: %d-%02d -> %d-%02d",
         INGEST_START_YEAR,
         INGEST_START_MONTH,
         INGEST_END_YEAR,
